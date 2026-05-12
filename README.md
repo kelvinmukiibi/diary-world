@@ -194,7 +194,6 @@ build/app/outputs/flutter-apk/app-release.apk
 
 ### Bluetooth Setting Screen
 ![Bluetooth Settings Screen Devices](screenshots/Bluetooth Devices.jpg)
-![Bluetooth Settings Screen](screenshots/Bluetooth.jpg)
 
 ### Profile Settings
 ![Profile Settings](screenshots/Settings - Profile.jpg)
