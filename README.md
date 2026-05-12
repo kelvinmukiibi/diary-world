@@ -162,15 +162,34 @@ build/app/outputs/flutter-apk/app-release.apk
 ---
 
 ## Screenshots
-(Add application screenshots here)
 
-Example:
+## Screenshots
 
-```markdown
-![Home Screen](screenshots/home.png)
-```
+### Home Screen
+![Home Screen](screenshots/Home.jpg)
 
----
+### Audio Start Recording Screen
+![Audio Start Recording Screen](screenshots/Recording.jpg)
+
+### Audio Active Recording Screen
+![Audio Active Recording Screen](screenshots/Recording Process.jpg)
+
+### Audio Playback Screen
+![Audio Playback Screen](screenshots/Recordings' history.jpg)
+
+### Audio Search Screen
+![Audio Playback Screen](screenshots/Search Query.jpg)
+
+### Accessibility Settings
+![Settings Screen](screenshots\Accessibility Settings.jpg)
+
+### Bluetooth Setting Screen
+![Bluetooth Settings Screen](screenshots/Bluetooth Devices.jpg)
+![Bluetooth Settings Screen](screenshots/Bluetooth.jpg)
+
+### Profile Settings
+![Profile Settings](screenshots/Settings - Profile.jpg)
+
 
 ## Author
 ### Mukiibi Kevin  
