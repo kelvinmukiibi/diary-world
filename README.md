@@ -184,7 +184,7 @@ build/app/outputs/flutter-apk/app-release.apk
 ![Settings Screen](screenshots\Accessibility Settings.jpg)
 
 ### Bluetooth Setting Screen
-![Bluetooth Settings Screen](screenshots/Bluetooth Devices.jpg)
+![Bluetooth Settings Screen Devices](screenshots/Bluetooth Devices.jpg)
 ![Bluetooth Settings Screen](screenshots/Bluetooth.jpg)
 
 ### Profile Settings
@@ -193,9 +193,15 @@ build/app/outputs/flutter-apk/app-release.apk
 
 ## Author
 ### Mukiibi Kevin  
-University Final Year Project
+Amity University Final Year Project
 
 ---
 
 ## GitHub Repository
 https://github.com/kelvinmukiibi/diary-world
+
+## APK Download
+
+The release APK can be downloaded from the GitHub Releases section:
+
+[Download Diary World v1.0](https://github.com/kelvinmukiibi/diary-world/releases/tag/v1.0)
