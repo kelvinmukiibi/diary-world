@@ -1,5 +1,14 @@
 # Diary World
 
+## GitHub Repository
+https://github.com/kelvinmukiibi/diary-world
+
+## APK Download
+
+The release APK can be downloaded from the GitHub Releases section:
+
+[Download Diary World v1.0](https://github.com/kelvinmukiibi/diary-world/releases/tag/v1.0)
+
 ## Project Overview
 Diary World is a Flutter-based mobile application designed to support users in managing personal diary entries using voice-assisted interaction, audio recording, and accessibility-focused features. The application was developed as a university project aimed at improving accessibility and usability for visually impaired and accessibility-dependent users.
 
@@ -196,12 +205,3 @@ build/app/outputs/flutter-apk/app-release.apk
 Amity University Final Year Project
 
 ---
-
-## GitHub Repository
-https://github.com/kelvinmukiibi/diary-world
-
-## APK Download
-
-The release APK can be downloaded from the GitHub Releases section:
-
-[Download Diary World v1.0](https://github.com/kelvinmukiibi/diary-world/releases/tag/v1.0)
