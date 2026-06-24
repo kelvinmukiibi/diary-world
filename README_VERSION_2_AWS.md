@@ -12,8 +12,12 @@ at tag `v1.0`; Version 2.0 work lives only on
 - Selected audio and metadata are encrypted locally with AES-256-GCM.
 - A user passphrase derives the encryption key with PBKDF2-HMAC-SHA256. The
   passphrase is not uploaded or stored by the app.
+- Cognito authenticates the user and API Gateway authorizes each presign
+  request. The short-lived ID token remains in memory only.
 - The app requests a 5–15 minute S3 presigned URL through API Gateway and
   Lambda. No permanent AWS credential is present in Flutter.
+- S3 validates a SHA-256 checksum and signed content length before accepting the
+  encrypted backup.
 - The S3 bucket is private, blocks public access, requires TLS, uses AES-256
   server-side encryption, and retains object versions.
 - Network failures leave all local recordings unchanged and produce visual and
@@ -29,8 +33,8 @@ to use local storage and work without internet access.
 ## Configure and run
 
 Copy `config/aws_backup.example.json` to the ignored file
-`config/aws_backup.json`, replace the placeholder with the deployed endpoint,
-then run:
+`config/aws_backup.json`, replace the endpoint, Cognito region, and public app
+client ID placeholders with the stack outputs, then run:
 
 ```powershell
 flutter pub get
@@ -40,11 +44,15 @@ flutter run --dart-define-from-file=config/aws_backup.json
 Or pass the value without creating a file:
 
 ```powershell
-flutter run --dart-define=AWS_BACKUP_API_ENDPOINT=https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com/v2/backup/presign
+flutter run `
+  --dart-define=AWS_BACKUP_API_ENDPOINT=https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com/v2/backup/presign `
+  --dart-define=AWS_COGNITO_REGION=YOUR_REGION `
+  --dart-define=AWS_COGNITO_CLIENT_ID=YOUR_PUBLIC_CLIENT_ID
 ```
 
 Never place AWS access keys, tokens, passphrases, or personal diary data in the
-configuration file. The endpoint is not a secret; the local file is ignored to
+configuration file. The endpoint, region, and no-secret Cognito mobile client ID
+are configuration rather than credentials; the local file is still ignored to
 prevent environment-specific values from being committed accidentally.
 
 ## Build a Version 2.0 debug APK

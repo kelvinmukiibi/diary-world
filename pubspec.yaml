@@ -49,6 +49,7 @@ dependencies:
   # Version 2.0 AWS secure-backup change: explicit networking, connectivity,
   # encryption, date, and local-path dependencies for optional backups.
   connectivity_plus: ^6.1.4
+  crypto: ^3.0.6
   cryptography: ^2.7.0
   http: ^1.2.2
   intl: ^0.20.0

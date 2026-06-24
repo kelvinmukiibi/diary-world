@@ -11,6 +11,11 @@
 - Added AWS deployment, security, migration, and local build documentation.
 - Expanded secret and generated-output exclusions.
 - Disabled Android cleartext HTTP traffic.
+- Added Cognito authentication and API Gateway authorization for presign
+  requests without embedding AWS credentials or a client secret.
+- Added strict filename/request validation and S3-enforced SHA-256 checksums.
+- Added an explicit confidentiality, integrity, availability, privacy,
+  auditability, and threat-model assessment.
 
 ### Migration note
 

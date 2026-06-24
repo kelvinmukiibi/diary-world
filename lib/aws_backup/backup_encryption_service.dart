@@ -26,7 +26,7 @@ class BackupEncryptionService {
 
   final Random _secureRandom;
 
-  // Version 2.0 AWS secure-backup change: diary audio and its identifying
+  // Version 2.0 cybersecurity change: diary audio and its identifying
   // metadata are encrypted together before any presigned URL is requested.
   // The passphrase never leaves the device and is not included in the envelope.
   Future<Uint8List> encryptEntries({

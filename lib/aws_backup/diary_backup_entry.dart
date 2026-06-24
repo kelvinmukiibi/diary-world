@@ -1,4 +1,4 @@
-// Version 2.0 AWS secure-backup change: a small model isolates the legacy
+// Version 2.0 cybersecurity change: a small model isolates the legacy
 // SharedPreferences recording format from the new backup feature.
 class DiaryBackupEntry {
   const DiaryBackupEntry({

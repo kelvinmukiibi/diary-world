@@ -26,7 +26,46 @@ Globals:
     Tracing: Active
 
 Resources:
-  # Version 2.0 AWS secure-backup change: private, encrypted, versioned storage.
+  # Version 2.0 cybersecurity change: Cognito authenticates each presign API
+  # request. This public mobile-app client deliberately has no client secret.
+  BackupUserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: !Sub '${AWS::StackName}-users'
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UsernameConfiguration:
+        CaseSensitive: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+          TemporaryPasswordValidityDays: 1
+  BackupUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: diary-world-v2-mobile
+      UserPoolId: !Ref BackupUserPool
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      IdTokenValidity: 1
+      AccessTokenValidity: 1
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        IdToken: hours
+        AccessToken: hours
+        RefreshToken: days
+
+  # Version 2.0 cybersecurity change: private, encrypted, versioned storage.
   BackupBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
@@ -96,8 +135,16 @@ Resources:
       TracingEnabled: true
       Cors:
         AllowMethods: "'POST,OPTIONS'"
-        AllowHeaders: "'Content-Type'"
+        AllowHeaders: "'Content-Type,Authorization'"
         AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: BackupCognitoAuthorizer
+        AddDefaultAuthorizerToCorsPreflight: false
+        Authorizers:
+          BackupCognitoAuthorizer:
+            UserPoolArn: !GetAtt BackupUserPool.Arn
+            Identity:
+              Header: Authorization
       Models:
         PresignRequest:
           type: object
@@ -105,6 +152,8 @@ Resources:
             - contentType
             - sizeBytes
             - backupFormat
+            - fileName
+            - checksumSha256
           additionalProperties: false
           properties:
             contentType:
@@ -118,8 +167,17 @@ Resources:
               type: string
               enum:
                 - diary-world-v2
+            fileName:
+              type: string
+              minLength: 44
+              maxLength: 80
+              pattern: '^diary-world-backup-[0-9]{8}T[0-9]{6}Z\.diarybackup\.json$'
+            checksumSha256:
+              type: string
+              minLength: 44
+              maxLength: 44
 
-  # Version 2.0 AWS secure-backup change: this function returns only a
+  # Version 2.0 cybersecurity change: this function returns only a
   # short-lived S3 PUT URL and never receives or logs diary content.
   PresignUploadFunction:
     Type: AWS::Serverless::Function
@@ -167,3 +225,12 @@ Outputs:
   BackupBucketName:
     Description: Private S3 bucket retained when the stack is deleted.
     Value: !Ref BackupBucket
+  CognitoUserPoolId:
+    Description: Cognito pool used to authenticate backup requests.
+    Value: !Ref BackupUserPool
+  CognitoClientId:
+    Description: Public mobile client ID; this is configuration, not a secret.
+    Value: !Ref BackupUserPoolClient
+  CognitoRegion:
+    Description: Region supplied to Flutter as AWS_COGNITO_REGION.
+    Value: !Ref AWS::Region

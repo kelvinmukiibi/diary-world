@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import sys
@@ -29,16 +30,38 @@ class Context:
 
 
 class PresignUploadTests(unittest.TestCase):
-    def test_rejects_oversized_backup(self):
-        event = {
-            "body": json.dumps(
-                {
-                    "contentType": "application/json",
-                    "sizeBytes": 26214401,
-                    "backupFormat": "diary-world-v2",
+    @staticmethod
+    def _event(body, *, authenticated=True):
+        event = {"body": json.dumps(body)}
+        if authenticated:
+            event["requestContext"] = {
+                "authorizer": {
+                    "claims": {"sub": "12345678-1234-1234-1234-123456789abc"}
                 }
-            )
+            }
+        return event
+
+    @staticmethod
+    def _valid_body(**overrides):
+        body = {
+            "fileName": "diary-world-backup-20260624T130000Z.diarybackup.json",
+            "contentType": "application/json",
+            "sizeBytes": 1024,
+            "backupFormat": "diary-world-v2",
+            "checksumSha256": base64.b64encode(bytes(32)).decode("ascii"),
         }
+        body.update(overrides)
+        return body
+
+    def test_requires_authenticated_cognito_subject(self):
+        response = app.lambda_handler(
+            self._event(self._valid_body(), authenticated=False), Context()
+        )
+
+        self.assertEqual(response["statusCode"], 401)
+
+    def test_rejects_oversized_backup(self):
+        event = self._event(self._valid_body(sizeBytes=26214401))
 
         response = app.lambda_handler(event, Context())
 
@@ -48,15 +71,7 @@ class PresignUploadTests(unittest.TestCase):
     @patch.object(app.S3, "generate_presigned_url")
     def test_returns_short_lived_encrypted_put_url(self, generate_url):
         generate_url.return_value = "https://s3.example/upload"
-        event = {
-            "body": json.dumps(
-                {
-                    "contentType": "application/json",
-                    "sizeBytes": 1024,
-                    "backupFormat": "diary-world-v2",
-                }
-            )
-        }
+        event = self._event(self._valid_body())
 
         response = app.lambda_handler(event, Context())
         body = json.loads(response["body"])
@@ -68,10 +83,36 @@ class PresignUploadTests(unittest.TestCase):
             "AES256",
         )
         self.assertEqual(body["requiredHeaders"]["Content-Length"], "1024")
+        self.assertEqual(
+            body["requiredHeaders"]["x-amz-checksum-sha256"],
+            self._valid_body()["checksumSha256"],
+        )
+        self.assertRegex(body["backupId"], r"^[0-9a-f-]{36}$")
         call = generate_url.call_args.kwargs
         self.assertEqual(call["ExpiresIn"], 600)
         self.assertEqual(call["Params"]["ServerSideEncryption"], "AES256")
         self.assertEqual(call["Params"]["ContentLength"], 1024)
+        self.assertEqual(
+            call["Params"]["ChecksumSHA256"],
+            self._valid_body()["checksumSha256"],
+        )
+        self.assertIn(
+            "backups/12345678-1234-1234-1234-123456789abc/",
+            call["Params"]["Key"],
+        )
+
+    def test_rejects_unsupported_filename_and_checksum(self):
+        response = app.lambda_handler(
+            self._event(
+                self._valid_body(
+                    fileName="../../private.aac",
+                    checksumSha256="not-a-checksum",
+                )
+            ),
+            Context(),
+        )
+
+        self.assertEqual(response["statusCode"], 400)
 
 
 if __name__ == "__main__":

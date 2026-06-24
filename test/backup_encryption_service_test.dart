@@ -7,7 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('encrypted backup envelope does not expose diary content', () async {
-    final directory = await Directory.systemTemp.createTemp('diary-backup-test');
+    final directory =
+        await Directory.systemTemp.createTemp('diary-backup-test');
     addTearDown(() => directory.delete(recursive: true));
     final audio = File('${directory.path}/entry.aac');
     await audio.writeAsBytes(utf8.encode('private diary audio content'));

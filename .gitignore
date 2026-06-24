@@ -42,7 +42,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Version 2.0 AWS secure-backup change: never commit local configuration,
+# Version 2.0 cybersecurity change: never commit local configuration,
 # credentials, signing material, logs, or generated infrastructure output.
 .env
 .env.*

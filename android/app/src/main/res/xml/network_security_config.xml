@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Version 2.0 AWS secure-backup change: reject cleartext network traffic. -->
+<!-- Version 2.0 cybersecurity change: reject cleartext network traffic. -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false" />
 </network-security-config>

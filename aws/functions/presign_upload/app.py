@@ -3,6 +3,8 @@
 import json
 import logging
 import os
+import base64
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -25,6 +27,10 @@ URL_EXPIRY_SECONDS = min(
 )
 ALLOWED_CONTENT_TYPES = {"application/json"}
 ALLOWED_BACKUP_FORMATS = {"diary-world-v2"}
+FILE_NAME_PATTERN = re.compile(
+    r"^diary-world-backup-[0-9]{8}T[0-9]{6}Z\.diarybackup\.json$"
+)
+SUBJECT_PATTERN = re.compile(r"^[0-9a-fA-F-]{36}$")
 
 
 def _response(status_code, body):
@@ -40,9 +46,23 @@ def _response(status_code, body):
 
 def lambda_handler(event, context):
     """Validate metadata and create one narrowly scoped presigned PUT URL."""
-    # Version 2.0 AWS secure-backup change: never log event/body because it may
+    # Version 2.0 cybersecurity change: never log event/body because it may
     # contain user-controlled data. Logs contain only safe operational fields.
     request_id = getattr(context, "aws_request_id", "unknown")
+
+    # API Gateway verifies the Cognito JWT signature and expiry. Lambda also
+    # requires a valid pseudonymous subject before issuing an upload URL.
+    claims = (
+        event.get("requestContext", {})
+        .get("authorizer", {})
+        .get("claims", {})
+        if isinstance(event, dict)
+        else {}
+    )
+    subject = claims.get("sub") if isinstance(claims, dict) else None
+    if not isinstance(subject, str) or not SUBJECT_PATTERN.fullmatch(subject):
+        LOGGER.warning("authorization_context_missing request_id=%s", request_id)
+        return _response(401, {"message": "Authentication is required."})
 
     try:
         body = json.loads(event.get("body") or "{}")
@@ -54,6 +74,8 @@ def lambda_handler(event, context):
         "contentType",
         "sizeBytes",
         "backupFormat",
+        "fileName",
+        "checksumSha256",
     }:
         LOGGER.warning("invalid_fields request_id=%s", request_id)
         return _response(400, {"message": "Invalid request fields."})
@@ -61,6 +83,12 @@ def lambda_handler(event, context):
     content_type = body.get("contentType")
     backup_format = body.get("backupFormat")
     size_bytes = body.get("sizeBytes")
+    file_name = body.get("fileName")
+    checksum_sha256 = body.get("checksumSha256")
+    try:
+        checksum_bytes = base64.b64decode(checksum_sha256, validate=True)
+    except (TypeError, ValueError):
+        checksum_bytes = b""
     if (
         content_type not in ALLOWED_CONTENT_TYPES
         or backup_format not in ALLOWED_BACKUP_FORMATS
@@ -68,15 +96,22 @@ def lambda_handler(event, context):
         or not isinstance(size_bytes, int)
         or size_bytes < 1
         or size_bytes > MAX_UPLOAD_BYTES
+        or not isinstance(file_name, str)
+        or not FILE_NAME_PATTERN.fullmatch(file_name)
+        or len(checksum_bytes) != 32
     ):
         LOGGER.warning("validation_failed request_id=%s", request_id)
         return _response(400, {"message": "Backup metadata was rejected."})
 
     date_prefix = datetime.now(timezone.utc).strftime("%Y/%m/%d")
-    object_key = f"backups/{date_prefix}/{uuid.uuid4()}.diarybackup.json"
+    backup_id = uuid.uuid4()
+    object_key = (
+        f"backups/{subject}/{date_prefix}/{backup_id}.diarybackup.json"
+    )
     required_headers = {
         "Content-Type": content_type,
         "Content-Length": str(size_bytes),
+        "x-amz-checksum-sha256": checksum_sha256,
         "x-amz-server-side-encryption": "AES256",
     }
 
@@ -87,6 +122,7 @@ def lambda_handler(event, context):
             "Key": object_key,
             "ContentType": content_type,
             "ContentLength": size_bytes,
+            "ChecksumSHA256": checksum_sha256,
             "ServerSideEncryption": "AES256",
         },
         ExpiresIn=URL_EXPIRY_SECONDS,
@@ -103,7 +139,7 @@ def lambda_handler(event, context):
         200,
         {
             "uploadUrl": upload_url,
-            "objectKey": object_key,
+            "backupId": str(backup_id),
             "expiresIn": URL_EXPIRY_SECONDS,
             "requiredHeaders": required_headers,
         },

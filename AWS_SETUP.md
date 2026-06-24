@@ -2,7 +2,7 @@
 
 The infrastructure in `aws/template.yaml` uses AWS SAM to deploy:
 
-`Flutter app → API Gateway → Lambda → short-lived presigned URL → private S3`
+`Flutter app → Cognito → API Gateway → Lambda → presigned URL → private S3`
 
 Lambda writes safe operational events to CloudWatch Logs. Diary content is
 uploaded directly to S3 only after client-side encryption.
@@ -59,18 +59,28 @@ Suggested guided-deployment answers:
 
 The template defaults to 10-minute presigned URLs. You may choose 300–900
 seconds. It accepts encrypted JSON backup envelopes up to 25 MB by default.
+API Gateway rejects requests without a valid, unexpired Cognito ID token.
 
-After deployment, retrieve the endpoint:
+After deployment, retrieve all client configuration outputs:
 
 ```powershell
 aws cloudformation describe-stacks `
   --stack-name diary-world-v2-backup `
-  --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" `
-  --output text
+  --query "Stacks[0].Outputs[].[OutputKey,OutputValue]" `
+  --output table
 ```
 
-Put that HTTPS URL in the ignored `config/aws_backup.json` file, using
-`config/aws_backup.example.json` as the shape.
+Put the HTTPS endpoint, Cognito region, and Cognito client ID in the ignored
+`config/aws_backup.json` file, using `config/aws_backup.example.json` as the
+shape. The client ID is intentionally created without a client secret.
+
+### Create a proof-of-concept backup user
+
+In the AWS console, open **Cognito → User pools → the deployed pool → Users**,
+then create a test user and set a permanent password that satisfies the policy.
+Avoid putting the password in shell commands, source files, screenshots, or
+PowerShell history. The app asks for these credentials only when the user starts
+a backup and keeps the resulting one-hour ID token in memory only.
 
 ## 4. Verify security controls
 
@@ -87,6 +97,9 @@ In the AWS console, also verify:
 - Default encryption is SSE-S3 (AES-256).
 - The Lambda execution role has only `s3:PutObject` on `backups/*`, plus its
   AWS-managed basic logging permissions.
+- API Gateway has the Cognito authorizer enabled and unauthenticated calls
+  return `401 Unauthorized`.
+- Uploaded objects include an S3-validated SHA-256 checksum.
 - Lambda log retention is 30 days and logs contain no request body or diary
   content.
 - API Gateway and Lambda X-Ray tracing is appropriate for your privacy policy.
