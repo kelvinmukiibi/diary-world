@@ -41,3 +41,30 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Version 2.0 AWS secure-backup change: never commit local configuration,
+# credentials, signing material, logs, or generated infrastructure output.
+.env
+.env.*
+!.env.example
+config/aws_backup.json
+**/local.properties
+**/key.properties
+*.jks
+*.keystore
+*.pem
+*.p12
+*.pfx
+*.key
+*.crt
+*.credentials
+credentials.json
+secrets.json
+*.log.*
+logs/
+.aws-sam/
+samconfig.toml
+terraform.tfstate
+terraform.tfstate.*
+.terraform/
+cdk.out/

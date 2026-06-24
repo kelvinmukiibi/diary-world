@@ -1,5 +1,10 @@
 # Diary World
 
+> Version 2.0 development is isolated on `release-2.0-aws-secure-backup`.
+> Release 1.0, tag `v1.0`, and its APK remain unchanged. See
+> [README_VERSION_2_AWS.md](README_VERSION_2_AWS.md) for the optional encrypted
+> AWS backup proof of concept.
+
 ## GitHub Repository
 https://github.com/kelvinmukiibi/diary-world
 

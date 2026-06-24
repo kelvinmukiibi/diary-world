@@ -3,6 +3,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:diaryworld/AccessibilitySettingsPage.dart';
 import 'package:diaryworld/DeviceConnectivityPage.dart';
 import 'package:diaryworld/guidepage.dart';
+import 'package:diaryworld/aws_backup/aws_backup_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -55,6 +56,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
     // Read out accessibility
     await _flutterTts.speak('Accessibility');
+    await _flutterTts.awaitSpeakCompletion(true);
+
+    // Version 2.0 AWS secure-backup change: announce the optional backup entry
+    // so voice-first users know it is available from Settings.
+    await _flutterTts.speak('Secure Cloud Backup');
     await _flutterTts.awaitSpeakCompletion(true);
 
     // Read out Help section
@@ -140,6 +146,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => AccessibilitySettingsPage(),
+                    ),
+                  );
+                }),
+                // Version 2.0 AWS secure-backup change: cloud backup remains
+                // optional and is opened only when the user chooses it.
+                _buildTile('Secure Cloud Backup', Icons.cloud_upload, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AwsBackupPage(),
                     ),
                   );
                 }),

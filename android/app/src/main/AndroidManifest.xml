@@ -22,7 +22,12 @@
     <application
         android:label="Diary World"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:usesCleartextTraffic="false"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+        <!-- Version 2.0 AWS secure-backup change: cleartext HTTP is disabled;
+             the backup API and presigned S3 upload must both use HTTPS. -->
 
         <activity
             android:name=".MainActivity"

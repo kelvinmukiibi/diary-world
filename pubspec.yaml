@@ -16,7 +16,9 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+# Version 2.0 AWS secure-backup change: this version exists only on the
+# release-2.0-aws-secure-backup development branch.
+version: 2.0.0+2
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -44,6 +46,13 @@ dependencies:
   flutter_tts: ^4.0.2
   audioplayers: ^6.1.0
   flutter_launcher_icons: ^0.13.1
+  # Version 2.0 AWS secure-backup change: explicit networking, connectivity,
+  # encryption, date, and local-path dependencies for optional backups.
+  connectivity_plus: ^6.1.4
+  cryptography: ^2.7.0
+  http: ^1.2.2
+  intl: ^0.20.0
+  path_provider: ^2.1.5
 
 
 flutter_launcher_icons:

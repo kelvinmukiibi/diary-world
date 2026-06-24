@@ -1,0 +1,169 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Diary World Version 2.0 secure-backup proof of concept
+
+Parameters:
+  PresignedUrlExpiresSeconds:
+    Type: Number
+    Default: 600
+    MinValue: 300
+    MaxValue: 900
+    Description: Presigned upload URL lifetime in seconds.
+  MaxUploadBytes:
+    Type: Number
+    Default: 26214400
+    MinValue: 1
+    MaxValue: 52428800
+    Description: Maximum encrypted backup size accepted by the presign API.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures:
+      - arm64
+    Timeout: 10
+    MemorySize: 128
+    Tracing: Active
+
+Resources:
+  # Version 2.0 AWS secure-backup change: private, encrypted, versioned storage.
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  BackupBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BackupBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt BackupBucket.Arn
+              - !Sub '${BackupBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+          - Sid: DenyUploadsWithoutEncryptionHeader
+            Effect: Deny
+            Principal: '*'
+            Action: s3:PutObject
+            Resource: !Sub '${BackupBucket.Arn}/backups/*'
+            Condition:
+              'Null':
+                s3:x-amz-server-side-encryption: true
+          - Sid: DenyUploadsWithWrongEncryption
+            Effect: Deny
+            Principal: '*'
+            Action: s3:PutObject
+            Resource: !Sub '${BackupBucket.Arn}/backups/*'
+            Condition:
+              StringNotEquals:
+                s3:x-amz-server-side-encryption: AES256
+
+  BackupApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub '${AWS::StackName}-api'
+      StageName: v2
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+        AllowOrigin: "'*'"
+      Models:
+        PresignRequest:
+          type: object
+          required:
+            - contentType
+            - sizeBytes
+            - backupFormat
+          additionalProperties: false
+          properties:
+            contentType:
+              type: string
+              enum:
+                - application/json
+            sizeBytes:
+              type: integer
+              minimum: 1
+            backupFormat:
+              type: string
+              enum:
+                - diary-world-v2
+
+  # Version 2.0 AWS secure-backup change: this function returns only a
+  # short-lived S3 PUT URL and never receives or logs diary content.
+  PresignUploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/presign_upload/
+      Handler: app.lambda_handler
+      Description: Creates short-lived presigned URLs for encrypted diary backups.
+      Environment:
+        Variables:
+          BACKUP_BUCKET: !Ref BackupBucket
+          MAX_UPLOAD_BYTES: !Ref MaxUploadBytes
+          URL_EXPIRY_SECONDS: !Ref PresignedUrlExpiresSeconds
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Sid: UploadEncryptedBackupsOnly
+              Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub '${BackupBucket.Arn}/backups/*'
+      Events:
+        PresignRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BackupApi
+            Path: /backup/presign
+            Method: post
+            RequestModel:
+              Model: PresignRequest
+              Required: true
+              ValidateBody: true
+
+  PresignUploadLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${PresignUploadFunction}'
+      RetentionInDays: 30
+
+Outputs:
+  ApiEndpoint:
+    Description: HTTPS endpoint supplied to Flutter as AWS_BACKUP_API_ENDPOINT.
+    Value: !Sub 'https://${BackupApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/v2/backup/presign'
+  BackupBucketName:
+    Description: Private S3 bucket retained when the stack is deleted.
+    Value: !Ref BackupBucket
