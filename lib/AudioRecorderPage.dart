@@ -32,7 +32,14 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
   }
 
   Future<void> _initializeRecorder() async {
-    await Permission.microphone.request();
+    final microphoneStatus = await Permission.microphone.request();
+    if (!microphoneStatus.isGranted) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Microphone permission is required to record diaries."),
+      ));
+      return;
+    }
     await _recorder.openRecorder();
   }
 
@@ -140,6 +147,7 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
   }
 
   Future<void> _startRecording() async {
+    _stopListening();
     Directory tempDir = await getTemporaryDirectory();
     String path =
         '${tempDir.path}/recording_${DateTime.now().millisecondsSinceEpoch}.aac';
@@ -177,9 +185,8 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
                 // TextField to display the name
                 TextField(
                   controller: _nameController,
-                  readOnly: true,
                   decoration: const InputDecoration(
-                    hintText: "Enter recording name",
+                    hintText: "Enter recording name, or leave blank",
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -203,16 +210,13 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
             // Save button
             TextButton(
               onPressed: () {
-                if (_nameController.text.isNotEmpty) {
-                  _saveRecording(_nameController.text);
-                  _speak("Recording saved as ${_nameController.text}");
-                  Navigator.pop(context);
-                  _startListening();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Please enter a name")),
-                  );
-                }
+                _saveRecording(_nameController.text);
+                final displayName = _nameController.text.trim().isEmpty
+                    ? "Diary recording"
+                    : _nameController.text.trim();
+                _speak("Recording saved as $displayName");
+                Navigator.pop(context);
+                _startListening();
               },
               child: const Text("Save"),
             ),
@@ -231,11 +235,19 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
       String currentTime = DateFormat('h:mm a').format(DateTime.now());
 
       Directory appDir = await getApplicationDocumentsDirectory();
-      String newPath = '${appDir.path}/$name.aac';
+      final trimmedName = name.trim();
+      final fallbackName =
+          'diary_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}';
+      final displayName = trimmedName.isEmpty ? fallbackName : trimmedName;
+      final safeFileName = displayName
+          .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+          .replaceAll(RegExp(r'\s+'), '_');
+      String newPath = '${appDir.path}/$safeFileName.aac';
 
       File recordingFile = File(_filePath);
       if (recordingFile.existsSync()) {
-        await recordingFile.rename(newPath);
+        await recordingFile.copy(newPath);
+        await recordingFile.delete();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Error: Recording file not found!")),
@@ -246,12 +258,12 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       List<String> recordings = prefs.getStringList('recordings') ?? [];
 
-      String newRecording = '$name|$currentDate|$currentTime|$newPath';
+      String newRecording = '$displayName|$currentDate|$currentTime|$newPath';
       recordings.add(newRecording);
       await prefs.setStringList('recordings', recordings);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Recording saved as $name")),
+        SnackBar(content: Text("Recording saved as $displayName")),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -356,7 +368,7 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
                 ),
               ),
               child: const Text(
-                "SAVE",
+                "STOP & SAVE",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
