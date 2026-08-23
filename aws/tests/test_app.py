@@ -82,7 +82,7 @@ class PresignUploadTests(unittest.TestCase):
             body["requiredHeaders"]["x-amz-server-side-encryption"],
             "AES256",
         )
-        self.assertEqual(body["requiredHeaders"]["Content-Length"], "1024")
+        self.assertNotIn("Content-Length", body["requiredHeaders"])
         self.assertEqual(
             body["requiredHeaders"]["x-amz-checksum-sha256"],
             self._valid_body()["checksumSha256"],
@@ -91,7 +91,7 @@ class PresignUploadTests(unittest.TestCase):
         call = generate_url.call_args.kwargs
         self.assertEqual(call["ExpiresIn"], 600)
         self.assertEqual(call["Params"]["ServerSideEncryption"], "AES256")
-        self.assertEqual(call["Params"]["ContentLength"], 1024)
+        self.assertNotIn("ContentLength", call["Params"])
         self.assertEqual(
             call["Params"]["ChecksumSHA256"],
             self._valid_body()["checksumSha256"],
