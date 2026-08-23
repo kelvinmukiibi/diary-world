@@ -110,7 +110,10 @@ def lambda_handler(event, context):
     )
     required_headers = {
         "Content-Type": content_type,
-        "Content-Length": str(size_bytes),
+        # Version 2.0 cybersecurity change: validate upload size before
+        # presigning, but do not sign Content-Length. Mobile HTTP clients may
+        # manage that header themselves, and S3 rejects presigned PUTs if a
+        # signed Content-Length is not reproduced exactly.
         "x-amz-checksum-sha256": checksum_sha256,
         "x-amz-server-side-encryption": "AES256",
     }
@@ -121,7 +124,6 @@ def lambda_handler(event, context):
             "Bucket": BUCKET,
             "Key": object_key,
             "ContentType": content_type,
-            "ContentLength": size_bytes,
             "ChecksumSHA256": checksum_sha256,
             "ServerSideEncryption": "AES256",
         },
